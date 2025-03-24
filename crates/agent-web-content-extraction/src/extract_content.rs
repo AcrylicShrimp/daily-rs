@@ -104,8 +104,9 @@ fn find_max_density_sum_descendant<'a>(
     node: ElementRef<'a>,
     stats: &HashMap<NodeId, TextDensityStat>,
 ) -> Option<ElementRef<'a>> {
-    let mut max_density_sum = -1.0;
-    let mut max_density_sum_descendant = None;
+    let stat = stats.get(&node.id())?;
+    let mut max_density_sum = stat.density_sum;
+    let mut max_density_sum_descendant = Some(node);
 
     for child in node.descendants() {
         let child_ref = match ElementRef::wrap(child) {
