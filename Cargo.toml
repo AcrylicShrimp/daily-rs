@@ -1,0 +1,30 @@
+[package]
+name = "daily-rs"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["crates/*"]
+
+[workspace.dependencies]
+agent-core = { path = "crates/agent-core" }
+agent-web-content-extraction = { path = "crates/agent-web-content-extraction" }
+anyhow = { version = "1" }
+async-stream = { version = "0.3" }
+futures = { version = "0.3" }
+reqwest = { version = "0.12" }
+serde = { version = "1" }
+serde_json = { version = "1" }
+thiserror = { version = "1" }
+tokio = { version = "1" }
+tokio-util = { version = "0.7" }
+
+[dependencies]
+agent-core = { workspace = true }
+agent-web-content-extraction = { workspace = true }
+anyhow = { workspace = true }
+futures = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
