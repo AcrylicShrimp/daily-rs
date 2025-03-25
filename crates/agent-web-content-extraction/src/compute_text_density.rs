@@ -1,10 +1,10 @@
 use ego_tree::NodeId;
-use scraper::{ElementRef, Node};
+use scraper::ElementRef;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone)]
 pub struct TextDensityStat<'a> {
+    pub order: usize,
     pub element: ElementRef<'a>,
     pub density: f64,
     pub density_sum: f64,
@@ -17,21 +17,6 @@ pub struct TextDensityStat<'a> {
     /// The total link text length of the node including all descendants.
     pub link_text_length: usize,
 }
-
-// Implement Hash and Eq for ElementRef so it can be used as HashMap Key
-impl Hash for TextDensityStat<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.element.id().hash(state); // Hash based on the unique ID of element.
-    }
-}
-
-impl PartialEq for TextDensityStat<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.element.id() == other.element.id() // Compare based on the unique id
-    }
-}
-
-impl Eq for TextDensityStat<'_> {}
 
 pub fn compute_text_density(root: ElementRef) -> HashMap<NodeId, TextDensityStat> {
     let mut stats = collect_stats(root);
@@ -115,10 +100,12 @@ fn collect_stats(root: ElementRef) -> HashMap<NodeId, TextDensityStat> {
 fn augment_stats<'a>(node: ElementRef<'a>, stats: &mut HashMap<NodeId, TextDensityStat<'a>>) {
     let text_length = compute_text_length_of_node(node);
     let is_link = node.value().name() == "a";
+    let order = stats.len();
 
     stats.insert(
         node.id(),
         TextDensityStat {
+            order,
             element: node,
             density: 0.0,
             density_sum: 0.0,
@@ -162,23 +149,18 @@ fn augment_stats<'a>(node: ElementRef<'a>, stats: &mut HashMap<NodeId, TextDensi
 fn compute_text_length_of_node(node: ElementRef) -> usize {
     let mut length = 0;
 
-    for child in node.descendants() {
-        let text_node = match child.value() {
-            Node::Text(text_node) => text_node,
-            _ => continue,
-        };
+    for text in node.text() {
+        let trimmed = text.trim();
 
-        let text = text_node.text.trim();
-
-        if text.is_empty() {
+        if trimmed.is_empty() {
             continue;
         }
 
-        if length != 0 && text_node.text.starts_with(|c: char| c.is_whitespace()) {
+        if length != 0 && text.starts_with(|c: char| c.is_whitespace()) {
             length += 1;
         }
 
-        length += text.len();
+        length += trimmed.len();
     }
 
     length

@@ -1,8 +1,6 @@
 use compute_text_density::compute_text_density;
-use ego_tree::{iter::Edge, NodeRef};
 use extract_content::extract_content_from_stats;
-use scraper::{Html, Node, Selector};
-use std::collections::HashSet;
+use scraper::{Html, Selector};
 use strip_non_content_tags::strip_non_content_tags;
 
 mod compute_text_density;
@@ -24,50 +22,31 @@ pub fn extract_content(html: &str) -> ExtractedContent {
         .unwrap();
 
     let stats = compute_text_density(root);
-    let contents = extract_content_from_stats(root, &stats);
-    let content_ids = HashSet::<_>::from_iter(contents.into_iter().map(|content| content.id()));
+    let mut contents = extract_content_from_stats(root, &stats);
 
-    let is_parent_content = |node_ref: NodeRef<Node>| {
-        let mut parent_ref = node_ref.parent();
+    contents.sort_unstable_by_key(|content| {
+        stats
+            .get(&content.id())
+            .map(|stat| stat.order)
+            .unwrap_or_default()
+    });
 
-        while let Some(parent) = parent_ref {
-            if content_ids.contains(&parent.id()) {
-                return true;
+    let mut fragments = Vec::with_capacity(contents.len() * 4);
+
+    for content in contents {
+        for text in content.text() {
+            let trimmed = text.trim();
+
+            if trimmed.is_empty() {
+                continue;
             }
 
-            parent_ref = parent.parent();
+            fragments.push(text.trim());
         }
-
-        false
-    };
-
-    let mut contents = Vec::new();
-
-    for edge in root.traverse() {
-        let edge = match edge {
-            Edge::Open(node_ref) => node_ref,
-            _ => continue,
-        };
-        let text = match edge.value() {
-            Node::Text(text) => text,
-            _ => continue,
-        };
-
-        if !is_parent_content(edge) {
-            continue;
-        }
-
-        let trimmed_text = text.trim();
-
-        if trimmed_text.is_empty() {
-            continue;
-        }
-
-        contents.push(trimmed_text);
     }
 
     ExtractedContent {
-        content: contents.join(" "),
+        content: fragments.join(" "),
     }
 }
 

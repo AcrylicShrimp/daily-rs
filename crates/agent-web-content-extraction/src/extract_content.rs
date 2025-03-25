@@ -12,9 +12,13 @@ pub fn extract_content_from_stats<'a>(
     }
 
     let threshold = compute_threshold(stats);
-    let mut contents = Vec::new();
+    let mut contents: Vec<ElementRef<'_>> = Vec::new();
     let mut mark_as_content = |node: ElementRef<'a>| {
         for content in &contents {
+            if content.id() == node.id() {
+                return;
+            }
+
             if is_parent_of(*content, node) {
                 return;
             }
@@ -93,10 +97,8 @@ fn mark_content<'b, 'a: 'b>(
 
     mark_as_content(max_density_sum_descendant);
 
-    for child in node.children() {
-        if let Some(child_stats) = ElementRef::wrap(child) {
-            mark_content(child_stats, stats, density_threshold, mark_as_content);
-        }
+    for child in node.child_elements() {
+        mark_content(child, stats, density_threshold, mark_as_content);
     }
 }
 
