@@ -1,5 +1,6 @@
 use compute_text_density::compute_text_density;
 use extract_content::extract_content_from_stats;
+use regex::Regex;
 use scraper::{Html, Selector};
 use strip_non_content_tags::strip_non_content_tags;
 
@@ -45,9 +46,13 @@ pub fn extract_content(html: &str) -> ExtractedContent {
         }
     }
 
-    ExtractedContent {
-        content: fragments.join(" "),
-    }
+    let content = fragments.join(" ");
+    let content = Regex::new(r"\s+")
+        .unwrap()
+        .replace_all(&content, " ")
+        .to_string();
+
+    ExtractedContent { content }
 }
 
 #[cfg(test)]
@@ -55,8 +60,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_extract_content() {
-        let html = include_str!("../test/example.html");
+    fn test_extract_content_1() {
+        let html = include_str!("../test/example_1.html");
+        let content = extract_content(html);
+        println!("content: {}", content.content);
+    }
+
+    #[test]
+    fn test_extract_content_2() {
+        let html = include_str!("../test/example_2.html");
+        let content = extract_content(html);
+        println!("content: {}", content.content);
+    }
+
+    #[test]
+    fn test_extract_content_3() {
+        let html = include_str!("../test/example_3.html");
+        let content = extract_content(html);
+        println!("content: {}", content.content);
+    }
+
+    #[test]
+    fn test_extract_content_4() {
+        let html = include_str!("../test/example_4.html");
         let content = extract_content(html);
         println!("content: {}", content.content);
     }

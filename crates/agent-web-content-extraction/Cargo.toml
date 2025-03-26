@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 ego-tree = { workspace = true }
+regex = { workspace = true }
 scraper = { workspace = true }

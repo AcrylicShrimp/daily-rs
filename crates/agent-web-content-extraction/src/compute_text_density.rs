@@ -1,5 +1,5 @@
 use ego_tree::NodeId;
-use scraper::ElementRef;
+use scraper::{ElementRef, Node};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -62,6 +62,33 @@ pub fn compute_text_density(root: ElementRef) -> HashMap<NodeId, TextDensityStat
         };
 
         parent_stat.density_sum += density;
+    }
+
+    let root_stat = stats.get_mut(&root.id());
+    let root_stat = match root_stat {
+        Some(root_stat) => root_stat,
+        None => return stats,
+    };
+    let root_density = root_stat.density;
+
+    // NOTE: Heading tags are more important than other tags,
+    // because they logically divide the page into sections,
+    // highlighting the main topics of each section.
+    //
+    // But headings are typically shorter than other tags,
+    // so we need to compensate for that by boosting their density.
+    for stat in stats.values_mut() {
+        let headings = ["h1", "h2", "h3", "h4", "h5", "h6"];
+
+        if !headings.contains(&stat.element.value().name()) {
+            continue;
+        }
+
+        let compensated_text_length =
+            stat.text_length + (root_density * stat.tag_count.max(1) as f64) as usize;
+        let compensated_density = compensated_text_length as f64; // ignore all child tags of heading tags
+
+        stat.density = compensated_density;
     }
 
     stats
@@ -153,14 +180,18 @@ fn augment_stats<'a>(node: ElementRef<'a>, stats: &mut HashMap<NodeId, TextDensi
 fn compute_text_length_of_node(node: ElementRef) -> usize {
     let mut length = 0;
 
-    for text in node.text() {
+    for child in node.children() {
+        let text = match child.value() {
+            Node::Text(text) => text,
+            _ => continue,
+        };
         let trimmed = text.trim();
 
         if trimmed.is_empty() {
             continue;
         }
 
-        if length != 0 && text.starts_with(|c: char| c.is_whitespace()) {
+        if length != 0 {
             length += 1;
         }
 
