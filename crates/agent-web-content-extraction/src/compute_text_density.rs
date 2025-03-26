@@ -25,8 +25,14 @@ pub fn compute_text_density(root: ElementRef) -> HashMap<NodeId, TextDensityStat
         return stats;
     }
 
-    let root_text_length = stats.get(&root.id()).unwrap().text_length;
-    let root_link_text_length = stats.get(&root.id()).unwrap().link_text_length;
+    let root_stat = stats.get(&root.id());
+    let root_stat = match root_stat {
+        Some(root_stat) => root_stat,
+        None => return stats,
+    };
+
+    let root_text_length = root_stat.text_length;
+    let root_link_text_length = root_stat.link_text_length;
     let root_link_text_ratio = root_link_text_length as f64 / (root_text_length as f64).max(1.0);
 
     struct TextDensity {
@@ -139,10 +145,8 @@ fn augment_stats<'a>(node: ElementRef<'a>, stats: &mut HashMap<NodeId, TextDensi
         parent = parent_ref.parent();
     }
 
-    for child in node.children() {
-        if let Some(child_ref) = ElementRef::wrap(child) {
-            augment_stats(child_ref, stats);
-        }
+    for child in node.child_elements() {
+        augment_stats(child, stats);
     }
 }
 
@@ -160,7 +164,7 @@ fn compute_text_length_of_node(node: ElementRef) -> usize {
             length += 1;
         }
 
-        length += trimmed.len();
+        length += trimmed.chars().count();
     }
 
     length

@@ -43,13 +43,13 @@ fn compute_threshold(stats: &HashMap<NodeId, TextDensityStat>) -> f64 {
                 (node_id, stat)
             }
         });
-    let (element, max_density_sum) = match max_density_sum {
-        Some((_, stat)) => (stat.element, stat.density_sum),
+    let (element, stat) = match max_density_sum {
+        Some((_, stat)) => (stat.element, stat),
         None => return 0.0,
     };
 
     let mut parent = element.parent();
-    let mut min_density = max_density_sum;
+    let mut min_density = stat.density;
 
     while let Some(parent_node) = parent {
         let parent_ref = match ElementRef::wrap(parent_node) {
