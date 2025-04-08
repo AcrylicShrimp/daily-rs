@@ -86,9 +86,10 @@ pub fn compute_text_density(root: ElementRef) -> HashMap<NodeId, TextDensityStat
 
         let compensated_text_length =
             stat.text_length + (root_density * stat.tag_count.max(1) as f64) as usize;
-        let compensated_density = compensated_text_length as f64; // ignore all child tags of heading tags
+        let compensated_density = compensated_text_length as f64;
 
         stat.density = compensated_density;
+        stat.density_sum += compensated_density;
     }
 
     stats
