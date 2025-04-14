@@ -14,6 +14,7 @@ async-stream = { version = "0.3" }
 chrono = { version = "0.4" }
 ego-tree = { version = "0.10" }
 futures = { version = "0.3" }
+log = { version = "0.4" }
 parking_lot = { version = "0.12" }
 regex = { version = "1" }
 reqwest = { version = "0.12" }

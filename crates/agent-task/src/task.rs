@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
-use std::{cmp::Ordering, future::Future, pin::Pin};
+use std::cmp::Ordering;
 
 pub struct Task {
     id: String,
@@ -41,7 +41,7 @@ impl Task {
             name,
             description,
             created_at: Utc::now(),
-            status: TaskStatus::Pending,
+            status: TaskStatus::InProgress,
             result: None,
         }
     }
@@ -62,20 +62,36 @@ impl Task {
         &self.created_at
     }
 
-    pub fn status(&self) -> &TaskStatus {
-        &self.status
+    pub fn status(&self) -> TaskStatus {
+        self.status
     }
 
     pub fn result(&self) -> Option<&dyn TaskResult> {
         self.result.as_deref()
     }
+
+    pub fn with_result(&self, result: Box<dyn TaskResult>) -> Self {
+        let status = match result.finish_reason() {
+            TaskFinishReason::Succeeded => TaskStatus::Succeeded,
+            TaskFinishReason::Failed => TaskStatus::Failed,
+            TaskFinishReason::Cancelled => TaskStatus::Cancelled,
+        };
+
+        Self {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            description: self.description.clone(),
+            created_at: self.created_at,
+            status,
+            result: Some(result),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TaskStatus {
-    Pending,
     InProgress,
-    Completed,
+    Succeeded,
     Failed,
     Cancelled,
 }
@@ -117,7 +133,7 @@ pub trait TaskResult: Send + Sync + 'static {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TaskFinishReason {
-    Success,
+    Succeeded,
     Failed,
     Cancelled,
 }
@@ -125,6 +141,24 @@ pub enum TaskFinishReason {
 pub type TaskSignalSender<T> = tokio::sync::mpsc::Sender<T>;
 pub type TaskSignalReceiver<T> = tokio::sync::mpsc::Receiver<T>;
 
+/// A trait for running a task. This trait is used to run a task by the `TaskManager`.
+///
+/// The task runner is responsible for:
+/// - running the task
+/// - sending progress updates to the task manager (optional, but highly recommended)
+/// - sending the result to the task manager
+///
+/// Also, the task runner __MUST__ handle the `cancel_signal` to stop the task correctly.
+///
+/// You should signal the `result_signal` after all the task logic is finished, including critical resources cleanup.
+/// All running instances will be terminated immediately after the result signal is sent.
+///
+/// The task will run forever unless:
+/// - the task is cancelled (you will be notified by the `cancel_signal`)
+/// - the task is finished (you should notify the task manager through the `result_signal`)
+///
+/// So you __MUST__ ensure that the task will be stopped eventually, notifying the task manager through the `result_signal`.
+///
 pub trait TaskRunner: Send + Sync + 'static {
     fn run(
         self,
